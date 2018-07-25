@@ -71,5 +71,15 @@ R[[2]] = diag(P[[2]] %*% t(R_mat))
 MDP$R_mat = R_mat
 ######################################
 
-policy_iteration(MDP)
+policy_evaluation(MDP, policy)
+
+
+every_visit_MC_policy_evaluation(MDP, policy, n_sim = 5000) %>% cbind
+
+td_lambda_backward_online(MDP, policy, n_sim = 100000, alpha = 0.001)
+
+
+x = matrix(rep(0, 6), nrow = 3, ncol = 2)
+colnames(x) = c("left", "right")
+rownames(x) = c("A", "B", "C")
 

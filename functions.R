@@ -186,3 +186,29 @@ every_visit_MC_policy_evaluation = function(MDP, policy, n_sim = 100) {
    }
   return(state_values = state_rewards/state_visits)
 }
+
+td_lambda_backward_online = function(MDP, policy, lambda = 0,alpha = 0.1, n_sim = 100) {
+  eligibility_traces = vector("double", length = MDP$n_s)
+  state_value = vector("double", length = MDP$n_s)
+  
+  for(i in 1:n_sim) {
+    start_state = sample(1:MDP$n_s, 1)
+    episode = sample_one_episode(MDP, policy, start_state)
+    
+    # Skip episodes of length 1
+    if(length(episode$state_vector) <= 1)
+      next
+    
+    for(j in 1:(length(episode$state_vector)-1)) {
+      # Update eligibility traces
+      eligibility_traces = MDP$gamma*lambda*eligibility_traces
+      eligibility_traces[[episode$state_vector[[j]]]] = eligibility_traces[[episode$state_vector[[j]]]] + 1
+      
+      # Calculate Error
+      delta = episode$rewards_vector[[j]] + MDP$gamma*state_value[[episode$state_vector[[j+1]]]] - state_value[[episode$state_vector[[j]]]]
+      state_value = state_value + alpha * delta * eligibility_traces
+      
+    }
+  }
+  return(list(state_value = state_value))
+}
