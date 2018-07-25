@@ -20,7 +20,6 @@
 #                                     (State describes the progres of the game and is of the format above)
 #------------------------------------------------------------INTERNAL SPECIFICATIONS------------------------------------------------------------
 
-
 Simple_simulator = list(
   .CARDS_IN_DECK = c(rep(4,9), 16),
   
