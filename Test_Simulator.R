@@ -5,6 +5,6 @@ source("Simulator.R")
 policy = t(matrix(c(rep(c(1,0), 3), rep(c(0,1), 7), rep(c(1,0), 3), rep(c(0,1), 6) ,rep(c(1,0), 13), rep(c(0,1),6)), nrow = 2))
 rownames(policy) = Simple_simulator$states
 colnames(policy) = Simple_simulator$actions
-#print(policy)
+print(policy)
 
 Simple_simulator$simulator(policy)

@@ -102,8 +102,9 @@ Simple_simulator = list(
   },
   
   states = c(sapply(seq(2,20), function(x) sprintf("%d Ace", x)), sapply(seq(2,20), function(x) sprintf("%d noAce", x))),
-  actions = list("hit", "stand"),
+  actions = c("hit", "stand"),
   simulator = function(policy){
+    list2env(Simple_simulator, .GlobalEnv) #Loads all from list Simple_siulator to global environment
     current = .deal_a_hand()
     list_of_states = c()
     list_of_actions = c()
@@ -127,3 +128,5 @@ Simple_simulator = list(
     }
     return(list(states = list_of_states, actions = list_of_actions, rewards = list_of_rewards))
   })
+
+
