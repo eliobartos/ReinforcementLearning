@@ -1,6 +1,6 @@
 #A simulator which can only make decisions based on the cards in his hand. Content of the hand is encoded as a string consisting of a number and a word.
-#The number gives the value of the hand (with aces counted as 1) and the word can be either "Ace" or "noAce" signaling that there is/is no ace
-#in the hand.
+#The number gives the best value of the hand (with aces counted as 1 or 11) and the word can be either "soft" or "hard". A "soft" hand has an ace that
+#is counted as 11 but can be counted as 1 in the future (thus always allowing one more card). All aces in a hard hand are counted as 1.
 
 #This is a simple variant of blackjack which starts by player getting 2 cards and the dealer 1. The player may "hit" as many times
 #as he wants. If the sum in player's hand is greater than 21 he loses the game immediately (aces are counted as 1 or 11 as is ussual in blackjack).
@@ -20,110 +20,120 @@
 #                                     (State describes the progres of the game and is of the format above)
 #------------------------------------------------------------INTERNAL SPECIFICATIONS------------------------------------------------------------
 
-Simple_simulator = list(
-  .CARDS_IN_DECK = c(rep(4,9), 16),
-  
-  .sample_cards = function(deck, number_of_cards){
-    indices = sample(sum(deck), number_of_cards)
-  
-    cards = Vectorize(function(index){
-      for(k in c(1:length(deck))){
-        if (sum(deck[1:k-1]) < index & index <= sum(deck[1:k])){
-          return(k)
-        }
-      }
-    })(indices)
-    return(cards)
-  },
 
-  .hidden_cards = function(state){
-    deck = .CARDS_IN_DECK
-    remove_card = function(x){
-      deck[x] = max(deck[x] - 1, 0)
+Simple_simulator <- (function() {
+    CARDS_IN_DECK = c(rep(4,9), 16)
+    
+    sample_cards = function(deck, number_of_cards){
+      indices = sample(sum(deck), number_of_cards)
+    
+      cards = Vectorize(function(index){
+        for(k in c(1:length(deck))){
+          if (sum(deck[1:k-1]) < index & index <= sum(deck[1:k])){
+            return(k)
+          }
+        }
+      })(indices)
+      return(cards)
     }
-    sapply(c(state$player,state$dealer), FUN = remove_card)
-    return(deck)
-  },
   
-  .deal_a_hand = function() {
-    sample = .sample_cards(.CARDS_IN_DECK, 3)
-    state = list(player=sample[1:2], dealer=sample[3], outcome="playing")
-    return(state)
-  },
-  
-  .best_value = function(hand){
-    bottom = sum(hand)
-    if (sum(hand) <= 11 & 1 %in% hand) {
-      return(bottom +10)
-    } else {
-      return(bottom)
+    hidden_cards = function(state){
+      deck = CARDS_IN_DECK
+      remove_card = function(x){
+        deck[x] = max(deck[x] - 1, 0)
+      }
+      sapply(c(state$player,state$dealer), FUN = remove_card)
+      return(deck)
     }
-  },
-  
-  .make_action = function(action, state) {
-    if(state$outcome != "playing"){
-      return(state)
-    }
-    if (sum(state$player) > 21) {
-      state$outcome = "lost"
-      return(state)
-    } else if(sum(state$dealer) > 21) {
-      state$outcome = "won"
+    
+    deal_a_hand = function() {
+      sample = sample_cards(CARDS_IN_DECK, 3)
+      state = list(player=sample[1:2], dealer=sample[3], outcome="playing")
       return(state)
     }
     
-    if (action == "hit"){
-      state$player = c(state$player, .sample_cards(.hidden_cards(state), 1))
-      if (.best_value(state$player) == 21) {
-        state$outcome = "won"
+    best_value = function(hand){
+      value = sum(hand)
+      aces = sum(hand == 1)
+      while (value <= 11 & aces > 0) {
+        value = value + 10
+        aces = aces - 1
       }
-      else if (sum(state$player) > 21) {
+      return(value)
+    }
+    
+    make_action = function(action, state) {
+      if(state$outcome != "playing"){
+        return(state)
+      }
+      if (sum(state$player) > 21) {
         state$outcome = "lost"
-      } else {
-        state$outcome = "playing"
-      }
-    } else if (action == "stand"){
-      while (sum(state$player) <= 21 & .best_value(state$dealer) <= .best_value(state$player) & sum(state$dealer) <= 21 ) {
-        state$dealer = c(state$dealer, .sample_cards(.hidden_cards(state), 1))
-      }
-      if(sum(state$player) > 21 | .best_value(state$player) >= .best_value(state$dealer) | sum(state$dealer) > 21){
+        return(state)
+      } else if(sum(state$dealer) > 21) {
         state$outcome = "won"
-      } else {
-        state$outcome ="lost"
+        return(state)
       }
-    } else {
-      stop("Unrecognized action commad: " + action + ".")
-    }
-    return(state)
-  },
-  
-  .simplified_hand = function(hand){
-    return(sprintf("%d %s", sum(hand),  if (1 %in% hand) "Ace" else "noAce"))
-  },
-  
-  states = c(sapply(seq(2,20), function(x) sprintf("%d Ace", x)), sapply(seq(2,20), function(x) sprintf("%d noAce", x))),
-  actions = list("hit", "stand"),
-  simulator = function(policy){
-    current = .deal_a_hand()
-    list_of_states = c()
-    list_of_actions = c()
-    list_of_rewards = c()
-    .best_value(current$player)
-    repeat{
-      hand = Simple_simulator$.simplified_hand(current$player)
-      action = sample(colnames(policy), 1, prob=policy[hand, ])
-      list_of_states = c(list_of_states, hand)
-      list_of_actions = c(list_of_actions, action)
-      current = .make_action(action = action, state = current)
-      if(current$outcome != "playing"){
-        if(action == 'hit') {
-          list_of_states = c(list_of_states, Simple_simulator$.simplified_hand(current$player))
+      
+      if (action == "hit"){
+        state$player = c(state$player, sample_cards(hidden_cards(state), 1))
+        if (best_value(state$player) == 21) {
+          state$outcome = "won"
         }
-        list_of_rewards = c(list_of_rewards, if (current$outcome == "won") 1 else 0)
-        break
+        else if (sum(state$player) > 21) {
+          state$outcome = "lost"
+        } else {
+          state$outcome = "playing"
+        }
+      } else if (action == "stand"){
+        if (sum(state$player) > 21) {
+          state$outcome = "lost"
+        } else {
+          while (best_value(state$dealer) <= best_value(state$player) & sum(state$dealer) <= 21 ) {
+            state$dealer = c(state$dealer, sample_cards(hidden_cards(state), 1))
+          }
+          if(best_value(state$player) >= best_value(state$dealer) | sum(state$dealer) > 21){
+            state$outcome = "won"
+          } else {
+            state$outcome ="lost"
+          }
+        }
       } else {
-        list_of_rewards = c(list_of_rewards, 0)
+        stop("Unrecognized action commad: " + action + ".")
       }
+      return(state)
     }
-    return(list(states = list_of_states, actions = list_of_actions, rewards = list_of_rewards))
-  })
+    
+    simplified_hand = function(hand) {
+      best = best_value(hand)
+      return(sprintf("%d %s", best,  if (sum(hand) < best) "soft" else "hard"))
+    }
+    
+    states = c(sapply(seq(2,21), function(x) sprintf("%d soft", x)), sapply(seq(2,21), function(x) sprintf("%d hard", x)))
+    actions = list("hit", "stand")
+    
+    simulate_given_hand = function(policy, hand){
+      current = hand
+      list_of_states = c()
+      list_of_actions = c()
+      list_of_rewards = c()
+      repeat{
+        hand = simplified_hand(current$player)
+        action = sample(colnames(policy), 1, prob=policy[hand, ])
+        list_of_states = c(list_of_states, hand)
+        list_of_actions = c(list_of_actions, action)
+        current = make_action(action = action, state = current)
+        list_of_rewards = c(list_of_rewards, if (current$outcome == "won") 1 else 0)
+        if(current$outcome != "playing"){
+          break
+        }
+      }
+      return(list(states = list_of_states, actions = list_of_actions, rewards = list_of_rewards,
+                  final_hand = current$player, dealer = current$dealer))
+    }
+    
+    simulator = function(policy) {
+      simulate_given_hand(policy, deal_a_hand())
+    }
+    
+    return(list(states = states, actions = actions, simulator = simulator))
+  })()
