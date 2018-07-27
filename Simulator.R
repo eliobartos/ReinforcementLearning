@@ -109,7 +109,7 @@ Simple_simulator <- (function() {
     }
     
     states = c(sapply(seq(2,21), function(x) sprintf("%d soft", x)), sapply(seq(2,21), function(x) sprintf("%d hard", x)))
-    actions = list("hit", "stand")
+    actions = c("hit", "stand")
     
     simulate_given_hand = function(policy, hand){
       current = hand

@@ -9,3 +9,17 @@ print(policy)
 
 Simple_simulator$simulator(policy)
 
+
+
+
+
+
+### Measure time to simulate
+library(microbenchmark)
+
+microbenchmark(
+  Simple_simulator$simulator(policy),
+  times = 1000L
+)
+#time is in nanoseconds 10^-9
+

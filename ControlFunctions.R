@@ -1,10 +1,11 @@
-GLIE_MC_control = function(states, actions, simulator, n_sim = 1000, epsilon_fun = function(k) {1/k}) {
+library(svMisc)
+
+GLIE_MC_control = function(states, actions, simulator, n_sim = 1000, epsilon_fun = function(k) {1/(k+1)}) {
   # states - list of strings representing states
   # actions - list of strings representing actions
   # simulator - for a given policy calculate one episode until termination. Returns list of 3 vectors: states, actions, rewards
   # n_sim - number of episodes to sample
   # epsilon_fun - function that controls how much we explore. It must converge to 0 when k -> Inf. Faster convergence means less exploration.
-  print(epsilon_fun)
   n_S = length(states)
   n_A = length(actions)
   
@@ -24,6 +25,7 @@ GLIE_MC_control = function(states, actions, simulator, n_sim = 1000, epsilon_fun
   colnames(N) = actions
   
   for(k in 1:n_sim) {
+    progress(k, max.value = n_sim)
     # Sample episode
     episode = simulator(policy)
     
@@ -65,8 +67,8 @@ GLIE_MC_control = function(states, actions, simulator, n_sim = 1000, epsilon_fun
       # Create new epsilon greedy policy based on estimated state-action value function Q
       epsilon = epsilon_fun(k)
 
-      if(epsilon <= 0 | epsilon >= 1) {
-        print("Given epsilon not in range <0,1>!!!")
+      if(epsilon <= 0 | epsilon > 1) {
+        print("Given epsilon not in range <0,1]!!!")
       }
       n_s = nrow(policy)
       n_a = ncol(policy)
@@ -91,28 +93,5 @@ GLIE_MC_control = function(states, actions, simulator, n_sim = 1000, epsilon_fun
               N = N))
 }
 
-## Example
 
-states = c("A")
-actions = c("l", "r", "d")
-
-simple_mdp = function(policy) {
-  episode = list()
-  episode$states = "A"
-  episode$actions = sample(colnames(policy),1, prob = policy[1,])
-  
-  if(episode$actions == "r"){
-    episode$rewards = 5
-  } else if(episode$actions == "l") {
-    episode$rewards = -5
-  } else {
-    episode$rewards = sample(c(0, 100),1, prob = c(0.9, 0.1))
-  }
-  return(episode)
-}
-
-simulator = simple_mdp
-
-GLIE_MC_control(states, actions, simple_mdp, n_sim = 1000, epsilon_fun = function(k) {1/sqrt(k)})
-GLIE_MC_control(states, actions, simple_mdp, n_sim = 1000, epsilon_fun = function(k) {1/k})
 
