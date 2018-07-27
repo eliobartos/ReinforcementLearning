@@ -122,6 +122,7 @@ Simple_simulator <- (function() {
         list_of_states = c(list_of_states, hand)
         list_of_actions = c(list_of_actions, action)
         current = make_action(action = action, state = current)
+
         list_of_rewards = c(list_of_rewards, if (current$outcome == "won") 1 else 0)
         if(current$outcome != "playing"){
           break
